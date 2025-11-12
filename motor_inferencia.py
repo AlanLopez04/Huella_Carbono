@@ -102,21 +102,28 @@ class MotorInferencia:
         self.cargar_reglas()
     
     def cargar_reglas(self):
-        """
-        Carga las reglas de producción desde Firebase.
-        
-        REGLA DE NEGOCIO: Las reglas deben cargarse al inicio
-        para garantizar que el motor use la versión más reciente.
-        """
+        """Carga las reglas de producción desde Firebase."""
         print("\n🔄 Cargando reglas desde Firebase...")
-        self.reglas = self.firebase.obtener_reglas()
         
-        if self.reglas:
+        # 1. Intenta obtener las reglas REALES de Firebase
+        reglas_reales = self.firebase.obtener_reglas()
+        
+        if reglas_reales:
+            # 2. Si se obtuvieron datos (el diccionario no está vacío):
+            self.reglas = reglas_reales # Sobrescribe el diccionario de reglas con las reales
             total_reglas = sum(len(grupo) for grupo in self.reglas.values())
-            print(f"✅ {total_reglas} reglas cargadas correctamente")
+            print(f"✅ {total_reglas} reglas cargadas correctamente desde Firebase.")
+            
+            # NOTA: Debes asegurarte de que tu app.py usa self.reglas
+            # para poblar el selectbox y el detalle de las reglas.
+            
         else:
-            print("⚠️ No se pudieron cargar reglas. Usando reglas por defecto.")
+            # 3. Si Firebase devolvió un diccionario vacío o None (Fallo en la carga)
+            print("⚠️ No se pudieron cargar reglas reales. Usando reglas por defecto.")
             self.reglas = self._reglas_fallback()
+            
+            # --- DEBUGGING TEMPORAL (Ayuda a ver qué pasa) ---
+            print(f"DEBUG: Reglas fallback cargadas: {list(self.reglas.keys())}")
     
     def _reglas_fallback(self) -> Dict:
         """Reglas mínimas en caso de fallo de Firebase"""
