@@ -64,14 +64,13 @@ class FirebaseConnection:
     def get_rules_ref(self):
         """Devuelve la referencia al nodo principal de reglas."""
         if self.db_ref:
-            # ✅ CORRECCIÓN CLAVE: Usamos 'reglas_produccion' según tu DB.
+            # ✅ RUTA CORREGIDA: Se utiliza 'reglas_produccion' según tu DB.
             return self.db_ref.child('reglas_produccion') 
         return None
 
     def obtener_reglas(self) -> Dict:
         """
-        Obtiene todos los grupos de reglas de la base de datos.
-        Esta función es la que llama motor_inferencia.py.
+        Implementación de la función que motor_inferencia.py llama.
         """
         rules_ref = self.get_rules_ref()
         if rules_ref:
@@ -82,7 +81,7 @@ class FirebaseConnection:
         
     def guardar_inferencia(self, usuario: str, conclusion: List[Dict]):
         """
-        Guarda las conclusiones de la inferencia en Firebase.
+        Implementación de la función que guarda las conclusiones.
         """
         if self.db_ref:
             timestamp = datetime.now().isoformat()
