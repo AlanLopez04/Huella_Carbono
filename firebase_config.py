@@ -23,36 +23,39 @@ class FirebaseConnection:
         """
         Método seguro para inicializar Firebase usando st.secrets en Streamlit Cloud.
         """
+        temp_file_name = None
         try:
-            # 1. OBTENER EL DICCIONARIO DEL SECRETO (nombre del secreto que pegaste en Streamlit)
+            # 1. OBTENER EL DICCIONARIO DEL SECRETO
             gcp_credentials_dict = st.secrets["gcp_service_account"]
             
+            # 💡 CORRECCIÓN CLAVE: CONVERTIR AttrDict A DICCIONARIO ESTÁNDAR
+            # Usamos .to_dict() para que la biblioteca 'json' lo pueda manejar.
+            standard_dict = dict(gcp_credentials_dict) 
+            
             # 2. CREAR ARCHIVO TEMPORAL
-            # Firebase Admin SDK requiere la ruta a un archivo para initialize_app.
-            # Creamos un archivo JSON temporal en el sistema de archivos de Streamlit.
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-                json.dump(gcp_credentials_dict, temp_file)
-                temp_file_name = temp_file.name
+                # Usar el diccionario estándar para la serialización
+                json.dump(standard_dict, temp_file)
+                temp_file_name = temp_file.name 
 
             # 3. INICIALIZAR FIREBASE CON EL ARCHIVO TEMPORAL
             cred = credentials.Certificate(temp_file_name)
             
-            # *** IMPORTANTE: AJUSTA LA URL DE LA BASE DE DATOS ***
-            # Reemplaza 'TU_DATABASE_URL' con la URL real de tu Firebase Realtime Database
+            # MUY IMPORTANTE: VERIFICAR LA URL
+            database_url = 'https://calculadora-carbono-hidalgo-default-rtdb.firebaseio.com/' 
+            
             firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://calculadora-carbono-hidalgo-default-rtdb.firebaseio.com/' 
-                # ^ Asumo esta URL. ¡Verifícala en tu consola de Firebase!
+                'databaseURL': database_url
             })
             
-            # 4. LIMPIAR (Eliminar el archivo temporal inmediatamente)
-            os.unlink(temp_file_name)
-            
         except KeyError:
-            # Error si el secreto no está configurado en Streamlit
-            st.error("Error: El secreto 'gcp_service_account' no se encontró en Streamlit Secrets.")
+            st.error("Error de Configuración: El secreto 'gcp_service_account' no se encontró. Verifica Streamlit Secrets.")
         except Exception as e:
-            # Capturar otros errores de conexión o inicialización
             st.error(f"Error al inicializar Firebase: {e}")
+        finally:
+            # 4. LIMPIAR (Asegurar que el archivo temporal se elimine)
+            if temp_file_name and os.path.exists(temp_file_name):
+                os.unlink(temp_file_name)
 
 
     def get_rules_ref(self):
