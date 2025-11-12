@@ -99,43 +99,62 @@ class MotorInferencia:
         self.memoria_trabajo = MemoriaTrabajo()
         self.reglas = {}
         self.conclusiones = []
+        # La carga de reglas siempre se llama al inicio
         self.cargar_reglas()
     
     def cargar_reglas(self):
-        """Carga las reglas de producción desde Firebase."""
-        print("\n🔄 Cargando reglas desde Firebase...")
+        """Intenta cargar reglas desde Firebase. Si falla, usa el fallback."""
+        print("\n🔄 Intentando cargar reglas desde Firebase...")
         
-        # 1. Intenta obtener las reglas REALES de Firebase
-        reglas_reales = self.firebase.obtener_reglas()
+        try:
+            # Llama a tu conexión real a Firebase
+            reglas_reales = self.firebase.obtener_reglas()
+        except Exception as e:
+            # Capturamos cualquier error en la conexión/carga
+            reglas_reales = None
+            print(f"ERROR: Fallo al obtener reglas de Firebase: {e}")
         
-        if reglas_reales:
-            # 2. Si se obtuvieron datos (el diccionario no está vacío):
-            self.reglas = reglas_reales # Sobrescribe el diccionario de reglas con las reales
-            total_reglas = sum(len(grupo) for grupo in self.reglas.values())
-            print(f"✅ {total_reglas} reglas cargadas correctamente desde Firebase.")
-            
-            # NOTA: Debes asegurarte de que tu app.py usa self.reglas
-            # para poblar el selectbox y el detalle de las reglas.
-            
-        else:
-            # 3. Si Firebase devolvió un diccionario vacío o None (Fallo en la carga)
-            print("⚠️ No se pudieron cargar reglas reales. Usando reglas por defecto.")
+        # -----------------------------------------------------------
+        # LÓGICA DE SIMULACIÓN / FALLBACK:
+        # -----------------------------------------------------------
+        # Si no se obtuvieron reglas válidas (es None, no es un dict, o está vacío)
+        if not reglas_reales or not isinstance(reglas_reales, dict) or len(reglas_reales) == 0:
+            print("⚠️ No se pudieron cargar reglas reales válidas. Usando reglas por defecto (fallback).")
             self.reglas = self._reglas_fallback()
-            
-            # --- DEBUGGING TEMPORAL (Ayuda a ver qué pasa) ---
-            print(f"DEBUG: Reglas fallback cargadas: {list(self.reglas.keys())}")
+            total_reglas = sum(len(grupo) for grupo in self.reglas.values())
+            print(f"DEBUG: {total_reglas} reglas fallback cargadas.")
+        else:
+            # Si se obtuvieron datos válidos (cargados exitosamente de Firebase)
+            self.reglas = reglas_reales 
+            total_reglas = sum(len(grupo) for grupo in self.reglas.values())
+            print(f"✅ {total_reglas} reglas cargadas correctamente desde Firebase (real).")
     
     def _reglas_fallback(self) -> Dict:
-        """Reglas mínimas en caso de fallo de Firebase"""
+        """Reglas mínimas SIMULADAS para garantizar el funcionamiento del motor."""
         return {
             "reglas_basicas": {
-                "R_DEFAULT": {
-                    "nombre": "Regla por Defecto",
-                    "condiciones": {},
-                    "conclusion": {"mensaje": "Sistema operando en modo limitado"},
-                    "prioridad": 1
-                }
-            }
+                "R_EMISION_ALTA": {
+                    "nombre": "Alerta de Emisión Alta",
+                    # Usa la emisión total en kg
+                    "condiciones": {"emision_per_capita_mayor_que": 5000}, 
+                    "conclusion": {"alerta": "Tu huella es significativamente alta. Es una prioridad identificar el foco."},
+                    "prioridad": 10
+                },
+                "R_MUNICIPIO_INDUSTRIAL": {
+                    "nombre": "Alerta de Contexto Municipal",
+                    # Las condiciones se buscan por combinación de tipo_atributo (ej: municipio_tipo)
+                    "condiciones": {"municipio_tipo": "Industrial Pesado", "municipio_nivel_contaminacion": "Muy Alto"},
+                    "conclusion": {"contexto": "Tu municipio tiene altos factores de riesgo ambiental. Tu huella personal es crítica."},
+                    "prioridad": 8
+                },
+                "R_BAJO_IMPACTO": {
+                    "nombre": "Refuerzo Positivo",
+                    "condiciones": {"emision_per_capita_menor_que": 3000, "usuario_perfil": "El ecologista comprometido"},
+                    "conclusion": {"refuerzo_positivo": "¡Felicidades! Tu esfuerzo como ecologista comprometido está dando frutos."},
+                    "prioridad": 5
+                },
+            },
+            # Puedes agregar más grupos de reglas aquí si lo deseas
         }
     
     def inicializar_hechos_desde_usuario(self, datos_usuario: Dict):
